@@ -488,12 +488,7 @@ initlua(void)
 
 	if (!L) {
 		L = lua_open();
-		luaopen_base(L);
-		luaopen_table(L);
-		luaopen_io(L);
-		luaopen_string(L);
-		luaopen_debug(L);
-		luaopen_loadlib(L);
+		luaL_openlibs(L);
 		luaopen_python(L);
 		lua_settop(L, 0);
 	}
