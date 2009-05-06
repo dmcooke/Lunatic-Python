@@ -117,6 +117,17 @@ PyObject *LuaConvert(lua_State *L, int n)
 	return ret;
 }
 
+static int e_py_convert(lua_State *L, PyObject *o, int withnone)
+{
+	int r = 0;
+	TRY {
+		r = py_convert(L, o, withnone);
+	} CATCH {
+		r = 0;
+	} ENDTRY;
+	return r;
+}
+
 static PyObject *LuaCall(lua_State *L, PyObject *args)
 {
 	PyObject *ret = NULL;
@@ -134,7 +145,7 @@ static PyObject *LuaCall(lua_State *L, PyObject *args)
 			lua_settop(L, 0);
 			return NULL;
 		}
-		rc = py_convert(L, arg, 0);
+		rc = e_py_convert(L, arg, 0);
 		if (!rc) {
 			PyErr_Format(PyExc_TypeError,
 				     "failed to convert argument #%d", i);
@@ -218,7 +229,7 @@ static PyObject *LuaObject_getattr(PyObject *obj, PyObject *attr)
 		PyErr_SetString(PyExc_RuntimeError, "lost reference");
 		goto error;
 	}
-	rc = py_convert(L, attr, 0);
+	rc = e_py_convert(L, attr, 0);
 	if (rc) {
 		TRY {
 			lua_gettable(L, -2);
@@ -248,9 +259,9 @@ static int LuaObject_setattr(PyObject *obj, PyObject *attr, PyObject *value)
 		PyErr_SetString(PyExc_TypeError, "Lua object is not a table");
 		goto error;
 	}
-	rc = py_convert(L, attr, 0);
+	rc = e_py_convert(L, attr, 0);
 	if (rc) {
-		rc = py_convert(L, value, 0);
+		rc = e_py_convert(L, value, 0);
 		if (rc) {
 			TRY {
 				lua_settable(L, -3);
