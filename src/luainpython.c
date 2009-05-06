@@ -45,18 +45,20 @@ PyObject *LuaConvert(lua_State *L, int n)
 			break;
 
 		case LUA_TSTRING: {
-			const char *s = lua_tostring(L, n);
-			int len = lua_strlen(L, n);
+			size_t len;
+			const char *s = lua_tolstring(L, n, &len);
 			ret = PyString_FromStringAndSize(s, len);
 			break;
 		}
 
 		case LUA_TNUMBER: {
 			lua_Number num = lua_tonumber(L, n);
+#ifdef LUA_NUMBER_DOUBLE
 			if (num != (long)num) {
-				ret = PyFloat_FromDouble(
-					(lua_Number)lua_tonumber(L, n));
-			} else {
+				ret = PyFloat_FromDouble(n);
+			} else
+#endif
+			{
 				ret = PyInt_FromLong((long)num);
 			}
 			break;
@@ -73,8 +75,7 @@ PyObject *LuaConvert(lua_State *L, int n)
 			break;
 
 		case LUA_TUSERDATA: {
-			py_object *obj = (py_object*)
-					 luaL_checkudata(L, n, POBJECT);
+			py_object *obj = check_py_object(L, n);
 
 			if (obj) {
 				Py_INCREF(obj->o);
@@ -321,11 +322,10 @@ static PyObject *LuaObject_iternext(LuaObject *obj)
 	return ret;
 }
 
-static int LuaObject_length(LuaObject *obj)
+static Py_ssize_t LuaObject_length(LuaObject *obj)
 {
-	int len;
 	lua_rawgeti(L, LUA_REGISTRYINDEX, ((LuaObject*)obj)->ref);
-	len = luaL_getn(L, -1);
+	size_t len = lua_objlen(L, -1);
 	lua_settop(L, 0);
 	return len;
 }
@@ -342,7 +342,7 @@ static int LuaObject_ass_subscript(PyObject *obj,
 }
 
 static PyMappingMethods LuaObject_as_mapping = {
-	(inquiry)LuaObject_length,	/*mp_length*/
+	(lenfunc)LuaObject_length,	/*mp_length*/
 	(binaryfunc)LuaObject_subscript,/*mp_subscript*/
 	(objobjargproc)LuaObject_ass_subscript,/*mp_ass_subscript*/
 };
@@ -369,7 +369,7 @@ PyTypeObject LuaObject_Type = {
 	LuaObject_setattr,	/*tp_setattro*/
         0,                      /*tp_as_buffer*/
         Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-        0,           		/*tp_doc*/
+        "Lua bridge object",    /*tp_doc*/
         0,                      /*tp_traverse*/
         0,                      /*tp_clear*/
         0,                      /*tp_richcompare*/
@@ -385,9 +385,9 @@ PyTypeObject LuaObject_Type = {
         0,                      /*tp_descr_set*/
         0,                      /*tp_dictoffset*/
         0,			/*tp_init*/
-        PyType_GenericAlloc,    /*tp_alloc*/
-        PyType_GenericNew,      /*tp_new*/
-      	_PyObject_Del,       	/*tp_free*/
+        0,			/*tp_alloc*/
+        0,			/*tp_new*/
+      	0,			/*tp_free*/
         0,                      /*tp_is_gc*/
 };
 
@@ -444,8 +444,7 @@ PyObject *Lua_eval(PyObject *self, PyObject *args)
 PyObject *Lua_globals(PyObject *self, PyObject *args)
 {
 	PyObject *ret = NULL;
-	lua_pushliteral(L, "_G");
-	lua_rawget(L, LUA_GLOBALSINDEX);
+	lua_pushvalue(L, LUA_GLOBALSINDEX);
 	if (lua_isnil(L, -1)) {
 		PyErr_SetString(PyExc_RuntimeError,
 				"lost globals reference");
@@ -480,16 +479,38 @@ static PyMethodDef lua_methods[] = {
 	{NULL,		NULL}
 };
 
+static void *py_lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize)
+{
+	(void)ud; (void)osize;
+	if (nsize == 0) {
+		PyMem_Free(ptr);
+		return NULL;
+	} else {
+		return PyMem_Realloc(ptr, nsize);
+	}
+}
+
 DL_EXPORT(void)
 initlua(void)
 {
 	PyObject *m;
-	m = Py_InitModule("lua", lua_methods);
+
+	LuaObject_Type.tp_new = PyType_GenericNew;
+	if (PyType_Ready(&LuaObject_Type) < 0)
+		return;
+
+	m = Py_InitModule3("lua", lua_methods,
+			   "Lua as a Python module.");
+	if (!m)
+		return;
 
 	if (!L) {
-		L = lua_open();
+		L = lua_newstate(py_lua_alloc, NULL);
 		luaL_openlibs(L);
-		luaopen_python(L);
+		if (lua_cpcall(L, luaopen_python, NULL) != 0) {
+			PyErr_SetString(PyExc_RuntimeError,
+					"can't open python lib in lua");
+		}
 		lua_settop(L, 0);
 	}
 }

@@ -32,6 +32,10 @@ typedef struct {
 	int asindx;
 } py_object;
 
+void stackDump(lua_State *L);
+
+py_object *check_py_object(lua_State *L, int ud);
+
 LUA_API int luaopen_python(lua_State *L);
 
 #endif
