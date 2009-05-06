@@ -33,7 +33,7 @@
 
 jmp_buf errjmp;
 
-int py_lua_panic(lua_State* L)
+static int py_lua_panic(lua_State* L)
 {
 	size_t len;
 	const char *s = lua_tolstring(L, -1, &len);
@@ -539,6 +539,15 @@ static void *py_lua_alloc(void *ud, void *ptr, size_t osize, size_t nsize)
 	}
 }
 
+static int py_lua_module_panic(lua_State* L)
+{
+	const char *s = lua_tostring(L, -1);
+	fprintf(stderr, "Error in lua module: %s\n", s);
+	fprintf(stderr, "exiting (sorry)\n");
+	fflush(stderr);
+	return (-1);
+}
+
 DL_EXPORT(void)
 initlua(void)
 {
@@ -553,7 +562,7 @@ initlua(void)
 	if (!m)
 		return;
 	if (!L) {
-		L = lua_newstate(py_lua_alloc, NULL);
+		L = lua_newstate(py_lua_alloc, py_lua_module_panic);
 		luaL_openlibs(L);
 		if (lua_cpcall(L, luaopen_python, NULL) != 0) {
 			PyErr_SetString(PyExc_RuntimeError,
