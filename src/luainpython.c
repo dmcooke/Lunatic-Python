@@ -401,32 +401,32 @@ PyTypeObject LuaObject_Type = {
 	0,			/*tp_as_sequence*/
 	&LuaObject_as_mapping,	/*tp_as_mapping*/
 	0,			/*tp_hash*/
-        (ternaryfunc)LuaObject_call,          /*tp_call*/
-        LuaObject_str,           /*tp_str*/
-        LuaObject_getattr,	/*tp_getattro*/
+	(ternaryfunc)LuaObject_call,	      /*tp_call*/
+	LuaObject_str,		 /*tp_str*/
+	LuaObject_getattr,	/*tp_getattro*/
 	LuaObject_setattr,	/*tp_setattro*/
-        0,                      /*tp_as_buffer*/
-        Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
-        "Lua bridge object",    /*tp_doc*/
-        0,                      /*tp_traverse*/
-        0,                      /*tp_clear*/
-        0,                      /*tp_richcompare*/
-        0,                      /*tp_weaklistoffset*/
-        PyObject_SelfIter,      /*tp_iter*/
-        (iternextfunc)LuaObject_iternext, /*tp_iternext*/
-        0,       		/*tp_methods*/
-        0,       		/*tp_members*/
-        0,                      /*tp_getset*/
-        0,                      /*tp_base*/
-        0,                      /*tp_dict*/
-        0,                      /*tp_descr_get*/
-        0,                      /*tp_descr_set*/
-        0,                      /*tp_dictoffset*/
-        0,			/*tp_init*/
-        0,			/*tp_alloc*/
-        0,			/*tp_new*/
-      	0,			/*tp_free*/
-        0,                      /*tp_is_gc*/
+	0,			/*tp_as_buffer*/
+	Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+	"Lua bridge object",	/*tp_doc*/
+	0,			/*tp_traverse*/
+	0,			/*tp_clear*/
+	0,			/*tp_richcompare*/
+	0,			/*tp_weaklistoffset*/
+	PyObject_SelfIter,	/*tp_iter*/
+	(iternextfunc)LuaObject_iternext, /*tp_iternext*/
+	0,       		/*tp_methods*/
+	0,       		/*tp_members*/
+	0,                      /*tp_getset*/
+	0,                      /*tp_base*/
+	0,                      /*tp_dict*/
+	0,                      /*tp_descr_get*/
+	0,                      /*tp_descr_set*/
+	0,                      /*tp_dictoffset*/
+	0,			/*tp_init*/
+	0,			/*tp_alloc*/
+	0,			/*tp_new*/
+	0,			/*tp_free*/
+	0,                      /*tp_is_gc*/
 };
 
 
@@ -541,7 +541,6 @@ initlua(void)
 			   "Lua as a Python module.");
 	if (!m)
 		return;
-
 	if (!L) {
 		L = lua_newstate(py_lua_alloc, NULL);
 		luaL_openlibs(L);
