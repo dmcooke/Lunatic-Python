@@ -22,12 +22,35 @@
 */
 #include <Python.h>
 
+#include <setjmp.h>
+
 #include <lua.h>
 #include <lauxlib.h>
 #include <lualib.h>
 
 #include "pythoninlua.h"
 #include "luainpython.h"
+
+jmp_buf errjmp;
+
+int py_lua_panic(lua_State* L)
+{
+	size_t len;
+	const char *s = lua_tolstring(L, -1, &len);
+	PyObject *o = PyString_FromStringAndSize(s, len);
+	PyErr_SetObject(PyExc_RuntimeError, o);
+	longjmp(errjmp, -1);
+	return (-1);
+}
+
+#define TRY     do {							\
+        lua_CFunction old_panic = lua_atpanic(LuaState, py_lua_panic);	\
+	if (setjmp(errjmp) == 0) {
+#define CATCH    lua_atpanic(LuaState, old_panic);	\
+        } else {					\
+		  lua_atpanic(LuaState, old_panic);
+#define ENDTRY   }} while (0)
+
 
 lua_State *LuaState = NULL;
 
@@ -100,11 +123,7 @@ static PyObject *LuaCall(lua_State *L, PyObject *args)
 	PyObject *arg;
 	int nargs, rc, i;
 
-	if (!PyTuple_Check(args)) {
-		PyErr_SetString(PyExc_TypeError, "tuple expected");
-		lua_settop(L, 0);
-		return NULL;
-	}
+	assert(PyTuple_Check(args));
 
 	nargs = PyTuple_Size(args);
 	for (i = 0; i != nargs; i++) {
@@ -196,17 +215,22 @@ static PyObject *LuaObject_getattr(PyObject *obj, PyObject *attr)
 	int rc;
 	lua_rawgeti(L, LUA_REGISTRYINDEX, ((LuaObject*)obj)->ref);
 	if (lua_isnil(L, -1)) {
-		lua_pop(L, 1);
 		PyErr_SetString(PyExc_RuntimeError, "lost reference");
-		return NULL;
+		goto error;
 	}
 	rc = py_convert(L, attr, 0);
 	if (rc) {
-		lua_gettable(L, -2);
+		TRY {
+			lua_gettable(L, -2);
+		} CATCH {
+			goto error;
+		} ENDTRY;
+
 		ret = LuaConvert(L, -1);
 	} else {
 		PyErr_SetString(PyExc_ValueError, "can't convert attr/key");
 	}
+  error:
 	lua_settop(L, 0);
 	return ret;
 }
@@ -217,20 +241,23 @@ static int LuaObject_setattr(PyObject *obj, PyObject *attr, PyObject *value)
 	int rc;
 	lua_rawgeti(L, LUA_REGISTRYINDEX, ((LuaObject*)obj)->ref);
 	if (lua_isnil(L, -1)) {
-		lua_pop(L, 1);
 		PyErr_SetString(PyExc_RuntimeError, "lost reference");
-		return -1;
+		goto error;
 	}
 	if (!lua_istable(L, -1)) {
-		lua_pop(L, -1);
 		PyErr_SetString(PyExc_TypeError, "Lua object is not a table");
-		return -1;
+		goto error;
 	}
 	rc = py_convert(L, attr, 0);
 	if (rc) {
 		rc = py_convert(L, value, 0);
 		if (rc) {
-			lua_settable(L, -3);
+			TRY {
+				lua_settable(L, -3);
+			} CATCH {
+				ret = -1;
+				goto error;
+			} ENDTRY;
 			ret = 0;
 		} else {
 			PyErr_SetString(PyExc_ValueError,
@@ -239,6 +266,7 @@ static int LuaObject_setattr(PyObject *obj, PyObject *attr, PyObject *value)
 	} else {
 		PyErr_SetString(PyExc_ValueError, "can't convert key/attr");
 	}
+  error:
 	lua_settop(L, 0);
 	return ret;
 }
@@ -248,7 +276,12 @@ static PyObject *LuaObject_str(PyObject *obj)
 	PyObject *ret = NULL;
 	const char *s;
 	lua_rawgeti(L, LUA_REGISTRYINDEX, ((LuaObject*)obj)->ref);
-	if (luaL_callmeta(L, -1, "__tostring")) {
+	int r = 0;
+	TRY {
+		r = luaL_callmeta(L, -1, "__tostring");
+	} CATCH { 
+	} ENDTRY;
+	if (r) {
 		s = lua_tostring(L, -1);
 		lua_pop(L, 1);
 		if (s) ret = PyString_FromString(s);
@@ -305,7 +338,12 @@ static PyObject *LuaObject_iternext(LuaObject *obj)
 	else
 		lua_rawgeti(L, LUA_REGISTRYINDEX, obj->refiter);
 
-	if (lua_next(L, -2) != 0) {
+	int r = 0;
+	TRY {
+		r = lua_next(L, -2);
+	} CATCH {
+	} ENDTRY;
+	if (r != 0) {
 		/* Remove value. */
 		lua_pop(L, 1);
 		ret = LuaConvert(L, -1);
