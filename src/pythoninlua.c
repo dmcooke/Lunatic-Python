@@ -38,21 +38,23 @@ void stackDump(lua_State *L)
 		int t = lua_type(L, i);
 		switch (t) {
 		case LUA_TSTRING:
-			printf("'%s'", lua_tostring(L, i));
+			fprintf(stderr, "'%s'", lua_tostring(L, i));
 			break;
 		case LUA_TBOOLEAN:
-			printf(lua_toboolean(L,i) ? "true" : "false");
+			fprintf(stderr, lua_toboolean(L,i) ? "true" : "false");
 			break;
 		case LUA_TNUMBER:
-			printf("%lg", lua_tonumber(L, i));
+			fprintf(stderr, "%lg", lua_tonumber(L, i));
 			break;
 		default:
-			printf("%s", lua_typename(L, t));
+			fprintf(stderr, "%s<%p>", lua_typename(L, t),
+			       lua_topointer(L, i));
 			break;
 		}
-		printf("  ");
+		fprintf(stderr, "  ");
 	}
-	printf("\n");
+	fprintf(stderr, "\n");
+	fflush(stderr);
 }
 
 void tableDump(lua_State *L, int t)
