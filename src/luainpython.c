@@ -211,7 +211,7 @@ static PyObject *LuaObject_New(int n)
 	if (obj) {
 		lua_pushvalue(L, n);
 		obj->ref = luaL_ref(L, LUA_REGISTRYINDEX);
-		obj->refiter = 0;
+		obj->refiter = LUA_NOREF;
 	}
 	return (PyObject*) obj;
 }
@@ -219,7 +219,7 @@ static PyObject *LuaObject_New(int n)
 static void LuaObject_dealloc(LuaObject *self)
 {
 	luaL_unref(L, LUA_REGISTRYINDEX, self->ref);
-	if (self->refiter)
+	if (self->refiter != LUA_NOREF)
 		luaL_unref(L, LUA_REGISTRYINDEX, self->refiter);
 	self->ob_type->tp_free((PyObject *)self);
 }
@@ -306,9 +306,10 @@ static PyObject *LuaObject_str(PyObject *obj)
 		switch (type) {
 			case LUA_TTABLE:
 			case LUA_TFUNCTION:
-				ret = PyString_FromFormat("<Lua %s at %p>",
-					lua_typename(L, type),
-					lua_topointer(L, -1));
+				ret = PyString_FromFormat("<Lua %s at %p/r=%d>",
+							  lua_typename(L, type),
+							  lua_topointer(L, -1),
+							  ((LuaObject*)obj)->ref);
 				break;
 			
 			case LUA_TUSERDATA:
@@ -348,7 +349,7 @@ static PyObject *LuaObject_iternext(LuaObject *obj)
 
 	lua_rawgeti(L, LUA_REGISTRYINDEX, ((LuaObject*)obj)->ref);
 
-	if (obj->refiter == 0)
+	if (obj->refiter == LUA_NOREF)
 		lua_pushnil(L);
 	else
 		lua_rawgeti(L, LUA_REGISTRYINDEX, obj->refiter);
@@ -363,13 +364,13 @@ static PyObject *LuaObject_iternext(LuaObject *obj)
 		lua_pop(L, 1);
 		ret = LuaConvert(L, -1);
 		/* Save key for next iteration. */
-		if (!obj->refiter)
+		if (obj->refiter == LUA_NOREF)
 			obj->refiter = luaL_ref(L, LUA_REGISTRYINDEX);
 		else
 			lua_rawseti(L, LUA_REGISTRYINDEX, obj->refiter);
-	} else if (obj->refiter) {
+	} else if (obj->refiter != LUA_NOREF) {
 		luaL_unref(L, LUA_REGISTRYINDEX, obj->refiter);
-		obj->refiter = 0;
+		obj->refiter = LUA_NOREF;
 	}
 
 	return ret;
