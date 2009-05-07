@@ -21,17 +21,22 @@ True
 >>> lua.eval("python")
 <Lua table at 0x...>
 
->>> class MyClass: pass
-...
+>>> class MyClass:
+...     def __repr__(self): return '<MyClass>'
+... 
 >>> obj = MyClass()
 >>> obj
-<__main__.MyClass instance at 0x...>
->>> lua.eval(\"\"\"python.eval('lua.eval('''python.eval("obj")''')')\"\"\")
-<__main__.MyClass instance at 0x...>
+<MyClass>
+>>> from pprint import pprint
+>>> pprint(lua.eval('python.globals()'))
+>>> lua.eval('python.eval("obj")')
+<MyClass>
+>>> lua.eval(\"\"\"python.eval([[lua.eval('python.eval("obj")')]])\"\"\")
+<MyClass>
 
 >>> lua.execute("pg = python.globals()")
 >>> lua.eval("pg.obj")
-<__main__.MyClass instance at 0x...>
+<MyClass>
 
 >>> table = lua.eval("table")
 >>> def show(key, value):
