@@ -127,6 +127,7 @@ int py_convert(lua_State *L, PyObject *o, int withnone)
 				lua_pop(L, 1);
 				luaL_error(L, "lost none from registry");
 			}
+			ret = 1;
 		} else {
 			/* Not really needed, but this way we may check
 			 * for errors with ret == 0. */
@@ -147,8 +148,11 @@ int py_convert(lua_State *L, PyObject *o, int withnone)
 		}
 		lua_pushlstring(L, s, len);
 		ret = 1;
-	} else if (PyInt_Check(o) || PyFloat_Check(o)) {
-		lua_pushnumber(L, (lua_Number)PyInt_AsLong(o));
+	} else if (PyInt_Check(o)) {
+		lua_pushinteger(L, PyInt_AsLong(o));
+		ret = 1;
+	} else if (PyFloat_Check(o)) {
+		lua_pushnumber(L, PyFloat_AsDouble(o));
 		ret = 1;
 	} else if (LuaObject_Check(o)) {
 		lua_rawgeti(L, LUA_REGISTRYINDEX, ((LuaObject*)o)->ref);
