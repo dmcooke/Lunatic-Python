@@ -27,8 +27,6 @@ True
 >>> obj = MyClass()
 >>> obj
 <MyClass>
->>> from pprint import pprint
->>> pprint(lua.eval('python.globals()'))
 >>> lua.eval('python.eval("obj")')
 <MyClass>
 >>> lua.eval(\"\"\"python.eval([[lua.eval('python.eval("obj")')]])\"\"\")
