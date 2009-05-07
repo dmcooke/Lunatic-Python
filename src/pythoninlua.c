@@ -55,6 +55,32 @@ void stackDump(lua_State *L)
 	printf("\n");
 }
 
+void tableDump(lua_State *L, int t)
+{
+	if (!lua_istable(L, t)) {
+		luaL_typerror(L, t, "not a table");
+	}
+	lua_pushnil(L);
+	while (lua_next(L, t) != 0) {
+		// key value
+		lua_getfield(L, LUA_GLOBALSINDEX, "tostring");
+		// key value <tostring>
+		lua_pushvalue(L, -3);
+		// key value <tostring> key
+		lua_call(L, 1, 1);
+		// key value "key"
+		lua_getfield(L, LUA_GLOBALSINDEX, "tostring");
+		// key value "key" <tostring>
+		lua_pushvalue(L, -3);
+		// key value "key" <tostring> value
+		lua_call(L, 1, 1);
+		// key value "key" "value"
+		fprintf(stderr, "%s - %s\n",
+			lua_tostring(L, -2), lua_tostring(L, -1));
+		lua_pop(L, 3);
+	}
+}
+
 /* Replacement for luaL_checkudata that doesn't throw an error */
 py_object* check_py_object(lua_State *L, int ud)
 {

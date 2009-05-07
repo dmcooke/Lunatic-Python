@@ -33,6 +33,7 @@ typedef struct {
 } py_object;
 
 void stackDump(lua_State *L);
+void tableDump(lua_State *L, int t);
 
 py_object *check_py_object(lua_State *L, int ud);
 
