@@ -10,6 +10,6 @@ assert(1.5 == python.eval("1.5"))
 pg = python.globals()
 d = {}
 pg.d = d
---python.execute("d['key'] = 'value'")
---table.foreach(d, print)
-
+-- This crashes if you've compiled the python.so to include another
+-- Lua interpreter, i.e., with -llua.
+python.execute("d['key'] = 'value'")

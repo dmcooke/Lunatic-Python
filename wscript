@@ -15,36 +15,34 @@ def configure(conf):
     conf.check_tool('misc')
     conf.check_python_version((2,4,2))
     conf.check_python_headers()
-    conf.env.append_value('CCFLAGS', '-g')
-    conf.env.append_value('CCFLAGS', '-Wall')
+    conf.env.append_value('CCFLAGS', ['-g', '-Wall', '-O2'])
 
-    if False:
+    # supposedly, this should throw ConfigurationError on failure
+    # or something.
+    r = conf.check_cfg(package='lua', atleast_version='5.1')
+    if r is not None:
+        conf.check_cfg(package='lua', args='--cflags', uselib_store='LUA')
+        conf.check_cfg(package='lua', args='--libs', uselib_store='LUALIB')
+    else:
         lua = conf.find_program('lua', var='LUA')
-        conf.check_cc(header_name='lua.h', uselib_store='LUA')
-        conf.check_cc(lib='lua', uselib_store='LUA')
-    if False:
         lua_path = os.path.normpath(os.path.join(os.path.dirname(lua), '..'))
         conf.env['CPPPATH_LUA'] = [os.path.join(lua_path, 'include')]
-        conf.env['LIBPATH_LUA'] = [os.path.join(lua_path, 'lib')]
-        conf.env['LIB_LUA'] = ['lua']
-    if True:
-        conf.env['LUA'] = os.path.join(conf.cwd, 'lua', 'lua')
-        conf.env['CPPPATH_LUA'] = [os.path.join(conf.cwd, 'lua')]
-        conf.env['LIBPATH_LUA'] = [os.path.join(conf.cwd, 'lua')]
-        conf.env['LIB_LUA'] = ['lua']
+        conf.env['LIBPATH_LUALIB'] = [os.path.join(lua_path, 'lib')]
+        conf.env['LIB_LUALIB'] = ['lua']
 
 def build(bld):
     lua_in_py_mod = bld.new_task_gen(
         features = 'cc cshlib pyext',
         source = ['src/luainpython.c', 'src/pythoninlua.c'],
         target = 'lua',
+        uselib = 'LUA LUALIB')
+    # We can't just copy the above .so, as that links in Lua, and you can
+    # only have one version of Lua in your program
+    lua_in_py_mod = bld.new_task_gen(
+        features = 'cc cshlib pyext',
+        source = ['src/luainpython.c', 'src/pythoninlua.c'],
+        target = 'python',
         uselib = 'LUA')
-    bld.add_group('sep')
-    py_in_lua_mod = bld.new_task_gen(
-        features = 'copy',
-        source = ['lua.so'],
-        target = ['python.so'],
-        )
 
 def check(ctx):
     # PYTHONPATH=build/default python tests/test_lua.py
@@ -52,15 +50,15 @@ def check(ctx):
 
     variant = 'default'
 
-    env = os.environ.copy()
-    pypath = env.get('PYTHONPATH', None)
+    environ = os.environ.copy()
+    pypath = environ.get('PYTHONPATH', None)
     bpath = os.path.join(Build.bld.bldnode.abspath(), variant)
     env['PYTHONPATH'] = bpath + ':' + pypath if pypath else bpath
-    luapath = env.get('LUA_CPATH', None)
+    luapath = environ.get('LUA_CPATH', None)
     bpath += '/?.so'
     env['LUA_CPATH'] = bpath + ';' + luapath if luapath else bpath + ';;'
 
     Utils.exec_command(['python', 'tests/test_lua.py'],
-                       env=env)
+                       env=environ)
     Utils.exec_command(['lua', 'tests/test_py.lua'],
-                       env=env)
+                       env=environ)
