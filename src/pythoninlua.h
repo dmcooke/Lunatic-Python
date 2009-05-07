@@ -23,7 +23,7 @@
 #ifndef PYTHONINLUA_H
 #define PYTHONINLUA_H
 
-#define POBJECT "POBJECT"
+#define POBJECT "PyObject"
 
 int py_convert(lua_State *L, PyObject *o, int withnone);
 
