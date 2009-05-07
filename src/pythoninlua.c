@@ -673,8 +673,8 @@ LUA_API int luaopen_python(lua_State *L)
 	lua_pushliteral(L, "Py_None");
 	rc = py_convert_custom(L, Py_None, 0);
 	if (rc) {
-		lua_pushliteral(L, "none");
-		lua_pushvalue(L, -2);
+		lua_pushliteral(L, "none"); /* M "Py_None" None "none" */
+		lua_pushvalue(L, -2);	    /* M "Py_None" None "none" None */
 		lua_rawset(L, -5); /* python.none */
 		lua_rawset(L, LUA_REGISTRYINDEX); /* registry.Py_None */
 	} else {
@@ -682,5 +682,5 @@ LUA_API int luaopen_python(lua_State *L)
 		luaL_error(L, "failed to convert none object");
 	}
 
-	return 0;
+	return 1;
 }
