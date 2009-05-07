@@ -126,6 +126,9 @@ static int e_py_convert(lua_State *L, PyObject *o, int withnone)
 	} CATCH {
 		r = 0;
 	} ENDTRY;
+	if (!r) {
+		PyErr_SetString(PyExc_RuntimeError, "can't convert");
+	}
 	return r;
 }
 
