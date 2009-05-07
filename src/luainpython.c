@@ -448,39 +448,43 @@ PyTypeObject LuaObject_Type = {
 
 PyObject *Lua_run(PyObject *args, int eval)
 {
-	PyObject *ret;
+	PyObject *ret = NULL;
 	char *buf = NULL;
 	char *s;
 	Py_ssize_t len;
 
 	if (!PyArg_ParseTuple(args, "s#", &s, &len))
-		return NULL;
+		goto error;
 
 	if (eval) {
-		buf = (char *) malloc(sizeof("return ")+len);
+		size_t retlen = sizeof("return ")-1;
+		size_t lenbuf = retlen + len;
+		buf = PyMem_New(char, lenbuf+1);
 		strcpy(buf, "return ");
-		strncat(buf, s, len);
+		memcpy(buf+retlen, s, len);
+		buf[lenbuf] = '\0';
 		s = buf;
-		len = sizeof("return ")-1+len;
+		len = lenbuf;
 	}
 
 	if (luaL_loadbuffer(L, s, len, "<python>") != 0) {
 		PyErr_Format(PyExc_RuntimeError,
 			     "error loading code: %s",
 			     lua_tostring(L, -1));
-		return NULL;
+		goto error;
 	}
 
-	free(buf);
+	PyMem_Free(buf);
 	
 	if (lua_pcall(L, 0, 1, 0) != 0) {
 		PyErr_Format(PyExc_RuntimeError,
 			     "error executing code: %s",
 			     lua_tostring(L, -1));
-		return NULL;
+		goto error;
 	}
 
 	ret = LuaConvert(L, -1);
+  error:
 	lua_settop(L, 0);
 	return ret;
 }
