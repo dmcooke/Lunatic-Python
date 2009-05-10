@@ -1,0 +1,43 @@
+Lunatic Python
+==============
+
+**Lunatic Python** is a two-way bridge between `Python`_ and `Lua`_,
+allowing these languages to intercommunicate. Being two-way means that
+it allows Lua inside Python, Python inside Lua, Lua inside Python
+inside Lua, Python inside Lua inside Python, and so on.
+
+This is an improved version of Lunatic Python 1.0, as written by
+Gustavo Niemeyer and available from http://labix.org/lunatic-python .
+
+David M. Cooke (david.m.cooke@gmail.com) has fixed several bugs, and
+made this compatible with Python 2.5 and Lua 5.1. The original
+documentation is avaiable in the `docs` directory.
+
+The build system has been changed to use `waf`_, which made building
+the lua extension easier than using Python's distutils. The `waf`
+utility is included.
+
+Building
+--------
+
+Using waf:
+
+   $ ./waf configure
+   $ ./waf build
+   $ ./waf check                # run the tests
+   $ ./waf install              # optionally, sudo ./waf install)
+
+The last step will install the python extension in the default
+location that distutils would use. The Lua extension is in the 
+``build/default`` directory as ``python.so``; this should be copied to the
+appropiate place for Lua's .so libraries.
+
+This version of Lunatic Python has currently only been tested on Mac
+OS X 10.5, with Python 2.6.1 and Lua 5.1.4. There are some differences
+in building the two modules that I'm aware of for other platforms that
+I've tried to accommodate, but I haven't tested them.
+
+
+.. _Python: http://www.python.org/
+.. _Lua: http://www.lua.org/
+.. _waf: http://code.google.com/p/waf/
