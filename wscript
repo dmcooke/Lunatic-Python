@@ -1,5 +1,5 @@
 # -*- Python -*-
-import os
+import sys, os
 import misc, Utils, Build, Options
 
 srcdir = '.'
@@ -30,6 +30,13 @@ def configure(conf):
         conf.env['LIBPATH_LUALIB'] = [os.path.join(lua_path, 'lib')]
         conf.env['LIB_LUALIB'] = ['lua']
 
+    # I've never seen a shared library on OS X with extension .bundle;
+    # that's used for an actual bundle of files (directory with a special
+    # flag set). So use .so instead (could use .dylib, but Lua by default
+    # looks for .so, and most everything else is ok with .so instead of .dylib)
+    conf.env['macbundle_PATTERN'] = '%s.so'
+
+
 def build(bld):
     lua_in_py_mod = bld.new_task_gen(
         features = 'cc cshlib pyext',
@@ -38,11 +45,14 @@ def build(bld):
         uselib = 'LUA LUALIB')
     # We can't just copy the above .so, as that links in Lua, and you can
     # only have one version of Lua in your program
-    lua_in_py_mod = bld.new_task_gen(
-        features = 'cc cshlib pyext',
+    py_in_lua_mod = bld.new_task_gen(
+        features = 'cc cshlib pyembed',
         source = ['src/luainpython.c', 'src/pythoninlua.c'],
         target = 'python',
-        uselib = 'LUA')
+        uselib = ['LUA'])
+    if sys.platform == 'darwin':
+        py_in_lua_mod.mac_bundle = True
+
 
 def check(ctx):
     # PYTHONPATH=build/default python tests/test_lua.py
