@@ -163,7 +163,7 @@ int py_convert(lua_State *L, PyObject *o, int withnone)
 			asindx = 1;
 		ret = py_convert_custom(L, o, asindx);
 		if (ret && !asindx &&
-		    (PyFunction_Check(o) || PyCFunction_Check(o)))
+		    (PyFunction_Check(o) || PyCFunction_Check(o) || PyCallable_Check(o)))
 			lua_pushcclosure(L, py_asfunc_call, 1);
 	}
 	return ret;
